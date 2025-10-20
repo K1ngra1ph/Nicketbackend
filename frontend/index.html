@@ -1,1 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Event Registration</title>
+  <style>
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: #f9fafb;
+      padding: 20px;
+    }
+    .form-container {
+      background: white;
+      padding: 25px;
+      border-radius: 12px;
+      max-width: 500px;
+      margin: auto;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    input, select {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      font-size: 15px;
+    }
+  </style>
+</head>
+<body>
 
+<div class="form-container">
+  <h2 style="text-align:center;">Register for Event</h2>
+
+  <label>Name</label>
+  <input type="text" id="name" placeholder="Enter your full name" required>
+
+  <label>Email</label>
+  <input type="email" id="email" placeholder="Enter your email" required>
+
+  <label>Phone Number</label>
+  <input type="tel" id="phone" placeholder="Enter your phone number" required>
+
+  <label>Select Event</label>
+  <select id="event">
+    <option value="">-- Choose Event --</option>
+    <option value="Soakers">Soakers</option>
+    <option value="Monochrome">Monochrome</option>
+    <option value="Vibe The Fest">Vibe The Fest</option>
+  </select>
+
+  <!-- WIN GAME Button + Selected Display -->
+  <div style="text-align:center; margin-top:20px;">
+    <button id="openWinGame" style="
+      background:#ef4444; color:white;
+      border:none; border-radius:8px;
+      padding:10px 20px; font-size:16px;
+      cursor:pointer; font-weight:600;
+    ">WIN THE GAME</button>
+
+    <div id="selectedDisplay" style="
+      margin-top:10px; font-size:15px; color:#1e293b;
+      font-weight:500; min-height:20px;
+    ">No numbers selected yet.</div>
+  </div>
+
+  <!-- Submit Button -->
+  <div style="text-align:center; margin-top:20px;">
+    <button id="submitBtn" style="
+      background-color:#2563eb;
+      color:white;
+      border:none;
+      border-radius:8px;
+      padding:10px 20px;
+      font-size:16px;
+      font-weight:600;
+      cursor:pointer;
+    ">I Don Ready</button>
+  </div>
+</div>
+
+<!-- Win Game Overlay -->
+<div id="winGameOverlay" style="
+  display:none; position:fixed; top:0; left:0;
+  width:100%; height:100%;
+  background:rgba(0,0,0,0.6); z-index:9999;
+  overflow-y:auto; backdrop-filter:blur(3px);
+">
+  <div id="winGameModal" style="
+    background:white; border-radius:16px;
+    padding:30px; width:80%; max-width:900px;
+    height:50vh; margin:60px auto;
+    box-shadow:0 10px 25px rgba(0,0,0,0.2);
+    position:relative; display:flex; flex-direction:column;
+    overflow-y:auto;
+  ">
+    <button id="closeWinGame" style="
+      position:absolute; top:15px; right:20px;
+      background:none; color:#1e293b; border:none;
+      font-size:20px; font-weight:bold; cursor:pointer;
+    ">✖</button>
+
+    <h2 style="text-align:center; color:#1e293b;">Pick Your Numbers</h2>
+    <p style="text-align:center; color:#64748b;">Each number costs ₦1,000</p>
+
+    <div id="winGameGrid" style="
+      display:grid; grid-template-columns:repeat(10,1fr);
+      gap:8px; margin-top:20px; justify-items:center;
+    "></div>
+
+    <div style="text-align:center; margin-top:25px; font-size:1.1rem;">
+      Total: ₦<span id="winGameTotal">0</span>
+    </div>
+
+    <div style="text-align:center; margin-top:20px;">
+      <button id="clearWinGame" style="
+        background:#facc15; color:#1e293b;
+        border:none; border-radius:8px;
+        padding:10px 25px; font-size:0.95rem;
+        font-weight:600; cursor:pointer; margin-right:10px;
+      ">Clear All Selections</button>
+
+      <button id="submitWinGame" style="
+        background:#ef4444; color:white;
+        border:none; border-radius:8px;
+        padding:10px 25px; font-size:0.95rem;
+        cursor:pointer; font-weight:600;
+      ">Submit</button>
+    </div>
+  </div>
+</div>
+
+<!-- Confirmation Overlay -->
+<div id="confirmOverlay" style="
+  display:none; position:fixed; top:0; left:0;
+  width:100%; height:100%; background:rgba(0,0,0,0.6);
+  z-index:9999; justify-content:center; align-items:center;
+">
+  <div style="
+    background:white; border-radius:12px; padding:20px 25px;
+    width:90%; max-width:400px; box-shadow:0 4px 10px rgba(0,0,0,0.3);
+    text-align:left;
+  ">
+    <h3 style="margin-top:0;">Confirm Your Information</h3>
+    <p id="confirmText" style="line-height:1.6;"></p>
+    <div style="text-align:right; margin-top:20px;">
+      <button id="cancelBtn" style="
+        background:#ef4444; color:white; border:none;
+        border-radius:8px; padding:8px 14px;
+        font-weight:600; cursor:pointer; margin-right:8px;
+      ">Cancel</button>
+      <button id="confirmBtn" style="
+        background:#22c55e; color:white; border:none;
+        border-radius:8px; padding:8px 14px;
+        font-weight:600; cursor:pointer;
+      ">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // WIN GAME logic
+  const overlay = document.getElementById('winGameOverlay');
+  const openBtn = document.getElementById('openWinGame');
+  const closeBtn = document.getElementById('closeWinGame');
+  const grid = document.getElementById('winGameGrid');
+  const totalEl = document.getElementById('winGameTotal');
+  const submitBtnGame = document.getElementById('submitWinGame');
+  const clearBtn = document.getElementById('clearWinGame');
+  const selectedDisplay = document.getElementById('selectedDisplay');
+  const pricePerNumber = 1000;
+  let selectedNumbers = [];
+
+  openBtn.onclick = () => overlay.style.display = 'block';
+  closeBtn.onclick = () => overlay.style.display = 'none';
+  overlay.onclick = (e) => { if (e.target === overlay) overlay.style.display = 'none'; };
+
+  for (let i = 1; i <= 100; i++) {
+    const btn = document.createElement('button');
+    btn.textContent = i;
+    btn.className = 'winGameBtn';
+    btn.style.cssText = `
+      width:50px; height:50px;
+      border:2px solid #cbd5e1;
+      border-radius:8px;
+      background:#fff; cursor:pointer;
+      font-weight:600; transition:all 0.2s;
+      position:relative;
+    `;
+    const badge = document.createElement('span');
+    badge.textContent = "";
+    badge.style.cssText = `
+      position:absolute; bottom:4px; right:6px;
+      font-size:10px; background:#ef4444; color:white;
+      border-radius:50%; padding:2px 5px; display:none;
+    `;
+    btn.appendChild(badge);
+    btn.onclick = () => {
+      selectedNumbers.push(i);
+      const count = selectedNumbers.filter(n => n === i).length;
+      badge.textContent = count;
+      badge.style.display = 'inline';
+      btn.style.background = '#ef4444';
+      btn.style.color = 'white';
+      btn.style.borderColor = '#ef4444';
+      updateTotals();
+    };
+    grid.appendChild(btn);
+  }
+
+  function updateTotals() {
+    totalEl.textContent = selectedNumbers.length * pricePerNumber;
+    selectedDisplay.textContent = selectedNumbers.length === 0
+      ? "No numbers selected yet."
+      : "Selected Numbers: " + selectedNumbers.join(", ");
+  }
+
+  clearBtn.onclick = () => {
+    selectedNumbers = [];
+    totalEl.textContent = 0;
+    grid.querySelectorAll('button.winGameBtn').forEach(btn => {
+      btn.style.background = '#fff';
+      btn.style.color = '#1e293b';
+      btn.style.borderColor = '#cbd5e1';
+      const badge = btn.querySelector('span');
+      badge.textContent = "";
+      badge.style.display = 'none';
+    });
+    updateTotals();
+  };
+
+  submitBtnGame.onclick = () => {
+    if (selectedNumbers.length === 0) return alert('Please select at least one number.');
+    overlay.style.display = 'none';
+  };
+
+  // CONFIRMATION OVERLAY
+  const submitBtn = document.getElementById('submitBtn');
+  const confirmOverlay = document.getElementById('confirmOverlay');
+  const confirmText = document.getElementById('confirmText');
+  const confirmBtn = document.getElementById('confirmBtn');
+  const cancelBtn = document.getElementById('cancelBtn');
+
+  submitBtn.addEventListener('click', function() {
+    const name = document.getElementById('name').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const phone = document.getElementById('phone').value.trim();
+    const eventValue = document.getElementById('event').value.trim();
+    const totalValue = selectedNumbers.length * pricePerNumber;
+    const numbersPicked = selectedNumbers.length > 0 ? selectedNumbers.join(", ") : "None selected";
+
+    if (name && email && phone && eventValue) {
+      confirmText.innerHTML = `
+        <strong>Name:</strong> ${name}<br>
+        <strong>Email:</strong> ${email}<br>
+        <strong>Phone:</strong> ${phone}<br>
+        <strong>Event:</strong> ${eventValue}<br>
+        <strong>Selected Numbers:</strong> ${numbersPicked}<br>
+        <strong>Total Value:</strong> ₦${totalValue.toLocaleString()}<br><br>
+        Please confirm that all the information above is correct.
+      `;
+      confirmOverlay.style.display = "flex";
+    } else {
+      alert('⚠️ Please fill in all required fields.');
+    }
+  });
+
+  cancelBtn.onclick = () => confirmOverlay.style.display = "none";
+
+  // ✅ Added optional improvement (click outside modal to close)
+  confirmOverlay.onclick = (e) => {
+    if (e.target === confirmOverlay) confirmOverlay.style.display = "none";
+  };
+
+  confirmBtn.onclick = () => {
+    confirmOverlay.style.display = "none";
+    alert(`✅ Submission successful! You selected: ${selectedNumbers.join(", ")}\nTotal = ₦${(selectedNumbers.length * pricePerNumber).toLocaleString()}`);
+  };
+</script>
+
+</body>
+</html>
