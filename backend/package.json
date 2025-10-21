@@ -1,6 +1,7 @@
 {
   "name": "Nicketbackend",
   "version": "1.0.0",
+  "type": "module",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
@@ -13,4 +14,3 @@
     "body-parser": "^1.20.2"
   }
 }
-
