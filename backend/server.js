@@ -4,12 +4,17 @@ import cors from "cors";
 import dotenv from "dotenv";
 
 dotenv.config();
+
 const app = express();
+const PORT = process.env.PORT || 10000;
+
 app.use(cors());
 app.use(express.json());
 
 // ✅ Health check
-app.get("/", (req, res) => res.send("Gmail Email Server is running"));
+app.get("/", (req, res) => {
+  res.send("NICKET BACKEND Server is running");
+});
 
 // ✅ Submit route
 app.post("/submit", async (req, res) => {
@@ -40,6 +45,7 @@ app.post("/submit", async (req, res) => {
            <strong>Selected Numbers:</strong> ${selectedNumbers.join(", ")}<br>
            <strong>Total Value:</strong> ₦${totalValue.toLocaleString()}</p>
         <p>We look forward to seeing you at the event!</p>
+        <p style="color:#555;">– The Nicket Team</p>
       `,
     };
 
