@@ -12,7 +12,7 @@ app.use(express.json());
 
 // ✅ Health check
 app.get("/", (req, res) => {
-  res.send("NICKET BACKEND Server is running");
+  res.send("NICKET BACKEND Server is running ✅");
 });
 
 // ✅ Submit route
@@ -24,9 +24,11 @@ app.post("/submit", async (req, res) => {
   }
 
   try {
-    // ✅ Gmail SMTP transporter
+    // ✅ Gmail SMTP transporter (works with your test)
     const transporter = nodemailer.createTransport({
-      service: process.env.EMAIL_SERVICE,
+      host: "smtp.gmail.com",
+      port: 465,
+      secure: true,
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
@@ -36,7 +38,7 @@ app.post("/submit", async (req, res) => {
     const mailOptions = {
       from: process.env.EMAIL_USER,
       to: email,
-      subject: `Event Registration Confirmation: ${eventValue}`,
+      subject: `🎟️ Event Registration Confirmation: ${eventValue}`,
       html: `
         <h3>Hi ${name},</h3>
         <p>Thank you for registering to get a free ticket for <strong>${eventValue}</strong>.</p>
@@ -57,4 +59,4 @@ app.post("/submit", async (req, res) => {
 });
 
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
