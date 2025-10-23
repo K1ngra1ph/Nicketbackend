@@ -1,7 +1,7 @@
 import express from "express";
-import nodemailer from "nodemailer";
 import cors from "cors";
 import dotenv from "dotenv";
+import fetch from "node-fetch";
 
 dotenv.config();
 
@@ -10,12 +10,13 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// ✅ Health check
+const SEND_EMAIL_URL = "https://nicket-email-service.vercel.app/api/send-email";
+
 app.get("/", (req, res) => {
   res.send("NICKET BACKEND Server is running ✅");
 });
 
-// ✅ Submit route
+✅ Submit route
 app.post("/submit", async (req, res) => {
   const { name, email, phone, eventValue, selectedNumbers, totalValue } = req.body;
 
@@ -24,37 +25,34 @@ app.post("/submit", async (req, res) => {
   }
 
   try {
-    // ✅ Gmail SMTP transporter (works with your test)
-    const transporter = nodemailer.createTransport({
-      host: "smtp.gmail.com",
-      port: 465,
-      secure: true,
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
+    const response = await fetch(SEND_EMAIL_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${process.env.BACKEND_SECRET}`,
       },
+      body: JSON.stringify({
+        name,
+        email,
+        phone,
+        eventValue,
+        selectedNumbers,
+        totalValue,
+      }),
     });
 
-    const mailOptions = {
-      from: process.env.EMAIL_USER,
-      to: email,
-      subject: `🎟️ Event Registration Confirmation: ${eventValue}`,
-      html: `
-        <h3>Hi ${name},</h3>
-        <p>Thank you for registering to get a free ticket for <strong>${eventValue}</strong>.</p>
-        <p><strong>Phone:</strong> ${phone}<br>
-           <strong>Selected Numbers:</strong> ${selectedNumbers.join(", ")}<br>
-           <strong>Total Value:</strong> ₦${totalValue.toLocaleString()}</p>
-        <p>We look forward to seeing you at the event!</p>
-        <p style="color:#555;">– The Nicket Team</p>
-      `,
-    };
+    const result = await response.json();
 
-    await transporter.sendMail(mailOptions);
+    if (!response.ok) {
+      console.error("❌ Email Service Error:", result);
+      return res.status(500).json({ message: "Email service failed", error: result });
+    }
+
+    console.log(`✅ Email sent successfully to ${email}`);
     res.json({ message: `✅ Email sent successfully to ${email}` });
   } catch (error) {
-    console.error("❌ Email Error:", error);
-    res.status(500).json({ message: "Failed to send email", error: error.message });
+    console.error("❌ Server Error:", error);
+    res.status(500).json({ message: "Failed to connect to email service", error: error.message });
   }
 });
 
