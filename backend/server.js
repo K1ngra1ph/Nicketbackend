@@ -12,11 +12,12 @@ app.use(express.json());
 
 const SEND_EMAIL_URL = "https://nicket-email-service.vercel.app/api/send-email";
 
+// ✅ Health check
 app.get("/", (req, res) => {
   res.send("NICKET BACKEND Server is running ✅");
 });
 
-✅ Submit route
+//✅ Submit route
 app.post("/submit", async (req, res) => {
   const { name, email, phone, eventValue, selectedNumbers, totalValue } = req.body;
 
