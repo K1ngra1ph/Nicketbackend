@@ -1,11 +1,11 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+import fetch from "node-fetch";
 
 dotenv.config();
 
 const app = express();
-
 app.use(cors());
 app.use(express.json());
 
@@ -16,43 +16,60 @@ app.get("/", (req, res) => {
   res.send("NICKET BACKEND Server is running ✅");
 });
 
-//✅ Submit route
+// ✅ Main submit route (with Paystack verification + email)
 app.post("/submit", async (req, res) => {
-  const { name, email, phone, eventValue, selectedNumbers, totalValue } = req.body;
+  const { reference, name, email, phone, eventValue, selectedNumbers, totalValue } = req.body;
 
-  if (!name || !email || !phone || !eventValue || !selectedNumbers || selectedNumbers.length === 0) {
+  if (!reference || !name || !email || !phone || !eventValue || !selectedNumbers?.length) {
     return res.status(400).json({ message: "Missing information or numbers not selected" });
   }
 
   try {
-    const response = await fetch(SEND_EMAIL_URL, {
-      method: "POST",
+    // ✅ Verify payment with Paystack
+    const verifyRes = await fetch(`https://api.paystack.co/transaction/verify/${reference}`, {
       headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${process.env.BACKEND_SECRET}`,
+        Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
       },
-      body: JSON.stringify({
-        name,
-        email,
-        phone,
-        eventValue,
-        selectedNumbers,
-        totalValue,
-      }),
     });
 
-    const result = await response.json();
+    const verifyData = await verifyRes.json();
 
-    if (!response.ok) {
-      console.error("❌ Email Service Error:", result);
-      return res.status(500).json({ message: "Email service failed", error: result });
+    if (verifyData.data?.status === "success") {
+      console.log(`✅ Verified payment for ${email}: ₦${verifyData.data.amount / 100}`);
+
+      // ✅ Forward to email microservice
+      const emailRes = await fetch(SEND_EMAIL_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${process.env.BACKEND_SECRET}`,
+        },
+        body: JSON.stringify({
+          name,
+          email,
+          phone,
+          eventValue,
+          selectedNumbers,
+          totalValue,
+        }),
+      });
+
+      const emailResult = await emailRes.json();
+
+      if (!emailRes.ok) {
+        console.error("❌ Email Service Error:", emailResult);
+        return res.status(500).json({ message: "Email service failed", error: emailResult });
+      }
+
+      console.log(`📨 Email request sent to Vercel for ${email}`);
+      return res.json({ message: `✅ Payment verified and email sent to ${email}` });
+    } else {
+      console.error("❌ Payment not verified:", verifyData);
+      return res.status(400).json({ message: "Payment not verified" });
     }
-
-    console.log(`✅ Email sent successfully to ${email}`);
-    res.json({ message: `✅ Email sent successfully to ${email}` });
   } catch (error) {
     console.error("❌ Server Error:", error);
-    res.status(500).json({ message: "Failed to connect to email service", error: error.message });
+    return res.status(500).json({ message: "Server error verifying payment", error: error.message });
   }
 });
 
