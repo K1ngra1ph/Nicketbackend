@@ -18,6 +18,8 @@ app.get("/", (req, res) => {
 
 // ✅ Main submit route (with Paystack verification + email)
 app.post("/submit", async (req, res) => {
+  // DEBUG: log incoming request body to help troubleshoot deployed 400s
+  console.log("DEBUG /submit received body:", JSON.stringify(req.body));
   const { reference, name, email, phone, eventValue, selectedNumbers, totalValue } = req.body;
 
   if (!reference || !name || !email || !phone || !eventValue || !selectedNumbers?.length) {
@@ -74,4 +76,12 @@ app.post("/submit", async (req, res) => {
 });
 
 const PORT = process.env.PORT || 10000;
+
+// Temporary debug echo endpoint (for debugging deployed request shapes).
+// Remove this before leaving the service in production to avoid exposing request payloads.
+app.post("/debug-echo", (req, res) => {
+  console.log("DEBUG /debug-echo received body:", JSON.stringify(req.body));
+  res.json({ received: req.body });
+});
+
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
