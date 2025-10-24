@@ -1,5 +1,14 @@
 {
+  "name": "nicketbackend",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "testemail": "node testemail.js"
+  },
   "dependencies": {
+    "dotenv": "^17.2.3",
     "nodemailer": "^7.0.9"
   }
 }
