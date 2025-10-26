@@ -16,72 +16,59 @@ app.get("/", (req, res) => {
   res.send("NICKET BACKEND Server is running ✅");
 });
 
-// ✅ Main submit route (with Paystack verification + email)
+// ✅ Main submit route (no Paystack verification)
 app.post("/submit", async (req, res) => {
-  // DEBUG: log incoming request body to help troubleshoot deployed 400s
   console.log("DEBUG /submit received body:", JSON.stringify(req.body));
-  const { reference, name, email, phone, eventValue, selectedNumbers, totalValue } = req.body;
 
-  if (!reference || !name || !email || !phone || !eventValue || !selectedNumbers?.length) {
+  const { name, email, phone, eventValue, selectedNumbers, totalValue } = req.body;
+
+  // Basic validation
+  if (!name || !email || !phone || !eventValue || !selectedNumbers?.length) {
     return res.status(400).json({ message: "Missing information or numbers not selected" });
   }
 
   try {
-    // ✅ Verify payment with Paystack
-    const verifyRes = await fetch(`https://api.paystack.co/transaction/verify/${reference}`, {
+    // ✅ Forward data to email microservice
+    const emailRes = await fetch(SEND_EMAIL_URL, {
+      method: "POST",
       headers: {
-        Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.BACKEND_SECRET}`,
       },
+      body: JSON.stringify({
+        name,
+        email,
+        phone,
+        eventValue,
+        selectedNumbers,
+        totalValue,
+      }),
     });
 
-    const verifyData = await verifyRes.json();
+    const emailResult = await emailRes.json();
 
-    if (verifyData.data?.status === "success") {
-      console.log(`✅ Verified payment for ${email}: ₦${verifyData.data.amount / 100}`);
-
-      // ✅ Forward to email microservice
-      const emailRes = await fetch(SEND_EMAIL_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${process.env.BACKEND_SECRET}`,
-        },
-        body: JSON.stringify({
-          name,
-          email,
-          phone,
-          eventValue,
-          selectedNumbers,
-          totalValue,
-        }),
-      });
-
-      const emailResult = await emailRes.json();
-
-      if (!emailRes.ok) {
-        console.error("❌ Email Service Error:", emailResult);
-        return res.status(500).json({ message: "Email service failed", error: emailResult });
-      }
-
-      console.log(`📨 Email request sent to Vercel for ${email}`);
-      return res.json({ message: `✅ Payment verified and email sent to ${email}` });
-    } else {
-      console.error("❌ Payment not verified:", verifyData);
-      return res.status(400).json({ message: "Payment not verified" });
+    if (!emailRes.ok) {
+      console.error("❌ Email Service Error:", emailResult);
+      return res.status(500).json({ message: "Email service failed", error: emailResult });
     }
+
+    console.log(`📨 Email request sent to Vercel for ${email}`);
+    return res.json({ message: `✅ Submission received and email sent to ${email}` });
+
   } catch (error) {
     console.error("❌ Server Error:", error);
-    return res.status(500).json({ message: "Server error verifying payment", error: error.message });
+    return res.status(500).json({ message: "Server error sending email" });
   }
 });
 
 const PORT = process.env.PORT || 10000;
 
-// Temporary debug echo endpoint (for debugging deployed request shapes).
-// Remove this before leaving the service in production to avoid exposing request payloads.
-app.post("/debug-echo", (req, res) => {
-  console.log("DEBUG /debug-echo received body:", JSON.stringify(req.body));
-  res.json({ received: req.body });
-});
+// Debug echo route (safe for dev only)
+if (process.env.NODE_ENV !== "production") {
+  app.post("/debug-echo", (req, res) => {
+    console.log("DEBUG /debug-echo received body:", JSON.stringify(req.body));
+    res.json({ received: req.body });
+  });
+}
 
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
