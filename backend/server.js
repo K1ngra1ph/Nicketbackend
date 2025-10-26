@@ -9,66 +9,106 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// ✅ Email microservice endpoint
 const SEND_EMAIL_URL = "https://nicket-email-service.vercel.app/api/send-email";
 
-// ✅ Health check
+// ✅ Health Check
 app.get("/", (req, res) => {
-  res.send("NICKET BACKEND Server is running ✅");
+  res.send("🚀 NICKET Backend running with Monnify integration ✅");
 });
 
-// ✅ Main submit route (no Paystack verification)
+// ✅ Route
 app.post("/submit", async (req, res) => {
-  console.log("DEBUG /submit received body:", JSON.stringify(req.body));
+  const {
+    reference,
+    name,
+    email,
+    phone,
+    eventValue,
+    selectedNumbers,
+    totalValue,
+  } = req.body;
 
-  const { name, email, phone, eventValue, selectedNumbers, totalValue } = req.body;
-
-  // Basic validation
-  if (!name || !email || !phone || !eventValue || !selectedNumbers?.length) {
-    return res.status(400).json({ message: "Missing information or numbers not selected" });
+  if (
+    !reference ||
+    !name ||
+    !email ||
+    !phone ||
+    !eventValue ||
+    !selectedNumbers ||
+    selectedNumbers.length === 0
+  ) {
+    return res
+      .status(400)
+      .json({ message: "Missing information or numbers not selected" });
   }
 
   try {
-    // ✅ Forward data to email microservice
-    const emailRes = await fetch(SEND_EMAIL_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.BACKEND_SECRET}`,
-      },
-      body: JSON.stringify({
-        name,
-        email,
-        phone,
-        eventValue,
-        selectedNumbers,
-        totalValue,
-      }),
-    });
+    const verifyRes = await fetch(
+      `https://sandbox.monnify.com/api/v1/transactions/${reference}`,
+      {
+        headers: {
+          Authorization: `Basic ${Buffer.from(
+            `${process.env.MONNIFY_API_KEY}:${process.env.MONNIFY_SECRET_KEY}`
+          ).toString("base64")}`,
+        },
+      }
+    );
 
-    const emailResult = await emailRes.json();
+    const verifyData = await verifyRes.json();
+    console.log("🔍 Monnify Verify Response:", verifyData);
 
-    if (!emailRes.ok) {
-      console.error("❌ Email Service Error:", emailResult);
-      return res.status(500).json({ message: "Email service failed", error: emailResult });
+    if (
+      verifyData.requestSuccessful &&
+      verifyData.responseBody &&
+      verifyData.responseBody.paymentStatus === "PAID"
+    ) {
+      console.log("✅ Payment verified successfully");
+
+      // ✅ Send email confirmation
+      const emailRes = await fetch(SEND_EMAIL_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${process.env.BACKEND_SECRET}`,
+        },
+        body: JSON.stringify({
+          name,
+          email,
+          phone,
+          eventValue,
+          selectedNumbers,
+          totalValue,
+          reference,
+        }),
+      });
+
+      const emailResult = await emailRes.json();
+
+      if (!emailRes.ok) {
+        console.error("❌ Email service failed:", emailResult);
+        return res
+          .status(500)
+          .json({ message: "Payment verified, but email failed." });
+      }
+
+      return res.json({
+        message: `✅ Payment verified & confirmation sent to ${email}`,
+        reference,
+      });
+    } else {
+      console.error("❌ Payment verification failed:", verifyData);
+      return res.status(400).json({ message: "Payment not verified" });
     }
-
-    console.log(`📨 Email request sent to Vercel for ${email}`);
-    return res.json({ message: `✅ Submission received and email sent to ${email}` });
-
   } catch (error) {
-    console.error("❌ Server Error:", error);
-    return res.status(500).json({ message: "Server error sending email" });
+    console.error("❌ Error verifying Monnify payment:", error);
+    res
+      .status(500)
+      .json({ message: "Server error verifying Monnify payment", error });
   }
 });
 
 const PORT = process.env.PORT || 10000;
-
-// Debug echo route (safe for dev only)
-if (process.env.NODE_ENV !== "production") {
-  app.post("/debug-echo", (req, res) => {
-    console.log("DEBUG /debug-echo received body:", JSON.stringify(req.body));
-    res.json({ received: req.body });
-  });
-}
-
-app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+app.listen(PORT, () =>
+  console.log(`🚀 Server running on port ${PORT} (Monnify Enabled)`)
+);
