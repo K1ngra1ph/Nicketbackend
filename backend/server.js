@@ -17,7 +17,30 @@ app.get("/", (req, res) => {
   res.send("🚀 NICKET Backend running with Monnify integration ✅");
 });
 
-// ✅ Route
+// 🔐 Get Monnify Access Token
+async function getMonnifyToken() {
+  const credentials = `${process.env.MONNIFY_API_KEY}:${process.env.MONNIFY_SECRET_KEY}`;
+  const encodedCreds = Buffer.from(credentials).toString("base64");
+
+  const response = await fetch("https://sandbox.monnify.com/api/v1/auth/login", {
+    method: "POST",
+    headers: {
+      Authorization: `Basic ${encodedCreds}`,
+      "Content-Type": "application/json",
+    },
+  });
+
+  const data = await response.json();
+
+  if (!response.ok || !data.responseBody?.accessToken) {
+    console.error("❌ Failed to get Monnify token:", data);
+    throw new Error(data.message || "Failed to get Monnify access token");
+  }
+
+  return data.responseBody.accessToken;
+}
+
+// ✅ Submit route
 app.post("/submit", async (req, res) => {
   const {
     reference,
@@ -44,14 +67,11 @@ app.post("/submit", async (req, res) => {
   }
 
   try {
+    const token = await getMonnifyToken();
     const verifyRes = await fetch(
       `https://sandbox.monnify.com/api/v1/transactions/${reference}`,
       {
-        headers: {
-          Authorization: `Basic ${Buffer.from(
-            `${process.env.MONNIFY_API_KEY}:${process.env.MONNIFY_SECRET_KEY}`
-          ).toString("base64")}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       }
     );
 
@@ -60,12 +80,11 @@ app.post("/submit", async (req, res) => {
 
     if (
       verifyData.requestSuccessful &&
-      verifyData.responseBody &&
-      verifyData.responseBody.paymentStatus === "PAID"
+      verifyData.responseBody?.paymentStatus === "PAID"
     ) {
       console.log("✅ Payment verified successfully");
 
-      // ✅ Send email confirmation
+      // ✅ Send confirmation email
       const emailRes = await fetch(SEND_EMAIL_URL, {
         method: "POST",
         headers: {
