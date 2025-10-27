@@ -42,25 +42,9 @@ async function getMonnifyToken() {
 
 // ✅ Submit route
 app.post("/submit", async (req, res) => {
-  const {
-    reference,
-    name,
-    email,
-    phone,
-    eventValue,
-    selectedNumbers,
-    totalValue,
-  } = req.body;
-
-  if (
-    !reference ||
-    !name ||
-    !email ||
-    !phone ||
-    !eventValue ||
-    !selectedNumbers ||
-    selectedNumbers.length === 0
-  ) {
+ console.log("🧾 Incoming payload:", req.body);
+  res.status(200).json({ message: "Received successfully", data: req.body }); 
+} {
     return res
       .status(400)
       .json({ message: "Missing information or numbers not selected" });
