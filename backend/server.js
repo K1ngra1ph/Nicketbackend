@@ -28,6 +28,14 @@ app.use(
   })
 );
 
+app.use((err, req, res, next) => {
+  if (err.message === "Not allowed by CORS") {
+    console.warn("🚫 Blocked by CORS:", req.headers.origin);
+    return res.status(403).json({ message: "CORS blocked this origin" });
+  }
+  next(err);
+});
+
 app.use(express.json());
 
 const SEND_EMAIL_URL = "https://nicket-email-service.vercel.app/api/send-email";
@@ -44,7 +52,7 @@ async function getMonnifyToken() {
   console.log("🔑 Getting Monnify token...");
   const response = await fetch(`${BASE_URL}/api/v1/auth/login`, {
     method: "POST",
-    headers: { Authorization: `Basic ${encodedCreds}` },
+    headers: { Authorization: `Basic ${encodedCreds}`, Accept: "application/json", },
   });
 
   let data;
@@ -81,16 +89,17 @@ app.post("/submit", async (req, res) => {
     const token = await getMonnifyToken();
     console.log("🧾 Verifying payment for reference:", reference);
 
-    const verifyRes = await fetch(`${BASE_URL}/api/v1/transactions/${reference}`, {
-      headers: { Authorization: `Bearer ${token}` },
+        const verifyRes = await fetch(`${BASE_URL}/api/v1/transactions/${reference}`, {
+      headers: { Authorization: `Bearer ${token}`, Accept: "application/json", },
     });
 
+    const rawText = await verifyRes.text();
     let verifyData;
+
     try {
-      verifyData = await verifyRes.json();
+      verifyData = JSON.parse(rawText);
     } catch (e) {
-      const rawText = await verifyRes.text();
-      console.error("⚠️ Monnify returned non-JSON response:", rawText.slice(0, 500));
+      console.error("⚠️ Monnify returned non-JSON response (raw):", rawText.slice(0, 500));
       throw new Error("Invalid JSON from Monnify verification endpoint");
     }
 
