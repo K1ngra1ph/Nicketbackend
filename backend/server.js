@@ -6,7 +6,21 @@ import fetch from "node-fetch";
 dotenv.config();
 
 const app = express();
-app.use(cors());
+const allowedOrigins = [ 
+  "https://nicketfrontend.vercel.app",
+  ];
+
+app.use(cors({
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+  credentials: true,
+}));
+
 app.use(express.json());
 
 const SEND_EMAIL_URL = "https://nicket-email-service.vercel.app/api/send-email";
