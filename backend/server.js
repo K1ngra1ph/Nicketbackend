@@ -69,14 +69,30 @@ app.post("/submit", async (req, res) => {
   try {
     const token = await getMonnifyToken();
 
+    console.log("🌍 Using Monnify base URL:", BASE_URL);
+    console.log("🔗 Verifying transaction reference:", reference);
+
     const verifyRes = await fetch(`${BASE_URL}/api/v1/transactions/${reference}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
 
-    const verifyData = await verifyRes.json();
-    console.log("🔍 Monnify Verify Response:", verifyData);
+    const verifyText = await verifyRes.text();
+    console.log("🧾 Raw Monnify Response:", verifyText);
 
-    if (verifyData.requestSuccessful && verifyData.responseBody.paymentStatus === "PAID") {
+     let verifyData;
+    try {
+      verifyData = JSON.parse(verifyText);
+    } catch (err) {
+      console.error("⚠️ Could not parse JSON from Monnify:", err.message);
+      return res.status(500).json({
+        message: "Invalid response from Monnify",
+        raw: verifyText,
+      });
+    }
+
+    console.log("🔍 Parsed Monnify Verify Response:", verifyData);
+
+    if (verifyData.requestSuccessful && verifyData.responseBody?.paymentStatus === "PAID") {
       console.log("✅ Payment verified successfully");
 
       const emailRes = await fetch(SEND_EMAIL_URL, {
@@ -109,7 +125,7 @@ app.post("/submit", async (req, res) => {
       });
     } else {
       console.error("❌ Payment verification failed:", verifyData);
-      return res.status(400).json({ message: "Payment not verified" });
+      return res.status(400).json({ message: "Payment not verified", verifyData });
     }
   } catch (error) {
     console.error("❌ Error verifying Monnify payment:", error);
