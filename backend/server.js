@@ -33,7 +33,7 @@ async function getMonnifyToken() {
 
 // ✅ Payment verification and email
 app.post("/submit", async (req, res) => {
-  console.log("📩 Incoming /submit request body:", req.body):
+  console.log("📩 Incoming /submit request body:", req.body);
   
   const {
     reference, 
