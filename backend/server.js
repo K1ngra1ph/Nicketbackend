@@ -9,6 +9,9 @@ const app = express();
 const allowedOrigins = [ 
   "https://nicketfrontend.vercel.app",
   ];
+const BASE_URL = process.env.MONNIFY_MODE === "LIVE"
+  ? "https://api.monnify.com"
+  : "https://sandbox.monnify.com";
 
 app.use(cors({
   origin: function (origin, callback) {
@@ -66,7 +69,7 @@ app.post("/submit", async (req, res) => {
   try {
     const token = await getMonnifyToken();
 
-    const verifyRes = await fetch(`https://sandbox.monnify.com/api/v1/transactions/${reference}`, {
+    const verifyRes = await fetch(`${BASE_URL}/api/v1/transactions/${reference}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
 
