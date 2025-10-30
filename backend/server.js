@@ -89,7 +89,8 @@ app.post("/submit", async (req, res) => {
     const token = await getMonnifyToken();
     console.log("🧾 Verifying payment for reference:", reference);
 
-        const verifyRes = await fetch(`${BASE_URL}/api/v1/transactions/${reference}`, {
+    const encodedRef = encodeURIComponent(reference);
+        const verifyRes = await fetch(`${BASE_URL}/api/v1/transactions/${encodedRef}`, {
       headers: { Authorization: `Bearer ${token}`, Accept: "application/json", },
     });
 
