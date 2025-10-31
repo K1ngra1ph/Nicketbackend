@@ -6,7 +6,10 @@ import fetch from "node-fetch";
 dotenv.config();
 
 const app = express();
-const allowedOrigins = ["https://nicketfrontend.vercel.app"];
+const allowedOrigins = [
+  "https://nicketfrontend.vercel.app",
+  "https://nicketfrontend.vercel.app/"
+];
 
 const BASE_URL =
   process.env.MONNIFY_MODE === "LIVE"
@@ -17,13 +20,16 @@ console.log("🌍 Using Monnify Base URL:", BASE_URL);
 
 app.use(
   cors({
-    origin: function (origin, callback) {
-      if (!origin || allowedOrigins.includes(origin)) {
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.some(o => origin.startsWith(o))) {
         callback(null, true);
       } else {
+        console.warn("🚫 Blocked by CORS:", origin);
         callback(new Error("Not allowed by CORS"));
       }
     },
+    methods: ["GET", "POST", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
   })
 );
@@ -36,6 +42,7 @@ app.use((err, req, res, next) => {
   next(err);
 });
 
+app.options("*", cors());
 app.use(express.json());
 
 const SEND_EMAIL_URL = "https://nicket-email-service.vercel.app/api/send-email";
@@ -112,6 +119,9 @@ app.post("/submit", async (req, res) => {
     ) {
       console.log("✅ Payment verified successfully. Sending confirmation email...");
 
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10000);
+
       const emailRes = await fetch(SEND_EMAIL_URL, {
         method: "POST",
         headers: {
@@ -127,7 +137,10 @@ app.post("/submit", async (req, res) => {
           totalValue,
           reference,
         }),
+        signal: controller.signal
       });
+
+      clearTimeout(timeout);
 
       const emailText = await emailRes.text();
       console.log("📧 Email service raw response:", emailText);
